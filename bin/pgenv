@@ -41,7 +41,8 @@ PGENV_CHECK_FILE=$( mktemp ${PGENV_ROOT}/pgenv.check.XXXXX )
 
 # Now -w because 9.0 and earlier always time out even when successful.
 PG_CTL="$PGSQL/bin/pg_ctl -D $PG_DATA"
-INITDB="$PGSQL/bin/initdb -U postgres --locale en_US.UTF-8 --encoding UNICODE -D $PG_DATA"
+PGENV_PG_USER="postgres"
+INITDB="$PGSQL/bin/initdb -U $PGENV_PG_USER --locale en_US.UTF-8 --encoding UNICODE -D $PG_DATA"
 
 # Ensure all temporary files
 # are removed on exit
@@ -130,12 +131,14 @@ pgenv_check_dependencies(){
     PGENV_PERL=$(which perl)
     pgenv_detail_command "Perl5" $PGENV_PERL
 
+    PGENV_TAR=$(which tar)
+    pgenv_detail_command "tar" $PGENV_TAR
 
     # Go back to exiting on error.
-    trap 'exit' ERR
-    missing=$(cat $PGENV_CHECK_FILE | grep 'KO' | wc -l)
+    missing=$( grep -c 'KO' $PGENV_CHECK_FILE )
+
     if [ $missing -gt 0 ]; then
-        echo "Missing dependencies:"
+        echo "Missing $missing dependencies:"
         grep 'KO' $PGENV_CHECK_FILE
         exit 1
     fi
@@ -144,12 +147,19 @@ pgenv_check_dependencies(){
         cat $PGENV_CHECK_FILE
     fi
 
-    rm $PGENV_CHECK_FILE
+    # re-enable error handling
+    trap 'exit' ERR
 }
 
 case $1 in
     use)
         v=$2
+
+        if [ -z "$v"  ]; then
+            echo "Which version number do you want?"
+            exit 1
+        fi
+
         # Make sure it's a version we have.
         if [ ! -e "pgsql-$v" ]; then
             echo "PostgreSQL $v not installed; installed versions:"
@@ -237,13 +247,26 @@ case $1 in
     build)
         v=$2
 
-        if [ -z "$2" ]; then
-            echo "Must specify a version number to build"
-            exit
+        if [ -z "$v"  ]; then
+            echo "Which version number do you want?"
+            exit 1
         fi
+
+
+
 
         # check for all dependencies
         pgenv_check_dependencies
+
+        # check if the postgres user exists on this system
+        # or claim
+        trap "" ERR
+        id -u $PGENV_PG_USER > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "You need to create the $PGENV_PG_USER user on this system to continue"
+            exit 1
+        fi
+        trap 'exit' ERR
 
         # Skip it if we already have it.
         if [ -e "pgsql-$v" ]; then
@@ -258,14 +281,24 @@ case $1 in
         cd src
 
         # Download the source if wee don't already have it.
-        PG_TARBALL="postgresql-$v.tar.bz2"
+        # WARNING: older PostgreSQL used .tar.gz instead of .tar.bz2,
+        # so if the version is behind 8 use the first format, otherwise
+        # try to get the most compressed archive
+        if [[ $v =~ ^[1-7]\. ]]; then
+            PG_TARBALL="postgresql-$v.tar.gz"
+            TAR_OPTS="zxf"
+        else
+            PG_TARBALL="postgresql-$v.tar.bz2"
+            TAR_OPTS="jxf"
+        fi
+
         if [ ! -f $PG_TARBALL ]; then
             $PGENV_CURL -fLO ${PGENV_DOWNLOAD_ROOT}/v$v/${PG_TARBALL}
         fi
 
         # Unpack the source.
         rm -rf "postgresql-$v"
-        tar jxf $PG_TARBALL
+        $PGENV_TAR $TAR_OPTS $PG_TARBALL
         cd postgresql-$v
 
         # Patch 8.1.
@@ -288,9 +321,9 @@ EOF
         # Configure.
         ./configure --prefix=$PGENV_ROOT/pgsql-$v --with-perl PERL=$PGENV_PERL
 
-        # make and make install.
-        if [ "`echo $v | awk -F . '{print $1}'`" -lt 9 ]; then
-            # 8.x doesn't have `make world`.
+        # make and make install
+        if [[ $v =~ ^[1-8]\. ]]; then
+            # 8.x (and prior versions ?) doesn't have `make world`.
             $PGENV_MAKE -j3
             $PGENV_MAKE install
             cd contrib
@@ -322,6 +355,12 @@ EOF
 
     remove)
         v=$2
+
+        if [ -z "$v"  ]; then
+            echo "Which version number do you want?"
+            exit 1
+        fi
+
         if [ ! -e "pgsql-$v" ]; then
             echo "PostgreSQL $v not installed; installed versions:"
             pgversions
@@ -336,7 +375,7 @@ EOF
         fi
 
         rm -fr "pgsql-$v"
-        rm -fr src/postgresql-$v.tar.bz2
+        rm -fr src/postgresql-$v.tar.* # could be .tar.bz2 or .tar.gz
         rm -fr src/postgresql-$v
         echo "PostgreSQL $v removed"
         exit
