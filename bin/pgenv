@@ -33,11 +33,11 @@ PGENV_ROOT=$(pwd)
 
 PGSQL=$PGENV_ROOT/pgsql
 PG_DATA=$PGSQL/data
+PG_LOG=$PG_DATA/server.log
 PGENV_DOWNLOAD_ROOT='http://ftp.postgresql.org/pub/source/'
 
 # temporary  check file
 PGENV_CHECK_FILE=$( mktemp ${PGENV_ROOT}/pgenv.check.XXXXX )
-
 
 # Now -w because 9.0 and earlier always time out even when successful.
 PG_CTL="$PGSQL/bin/pg_ctl -D $PG_DATA"
@@ -58,13 +58,21 @@ pgversions() {
     if [ -e "pgsql" ]; then
         curr=$(readlink pgsql)
     fi
-    for dir in $(ls | grep pgsql-); do
+    installed=0
+    for dir in $( ls -d pgsql-* ); do
         if [ "$dir" = "$curr" ]; then
-            echo "  *  $dir"
+            flags=" *"
         else
-            echo "     $dir"
+            flags="  "
         fi
+
+        echo -e "$flags $dir"
+        installed=$(( installed + 1 ))
     done
+
+    if [ $installed -eq 0 ]; then
+        echo "No version installed!"
+    fi
 }
 
 pgenvhelp() {
@@ -189,8 +197,9 @@ case $1 in
 
         # Start er up!
         if ! $PG_CTL status &> /dev/null; then
-            $PG_CTL start -l $PG_DATA/server.log
+            $PG_CTL start -l $PG_LOG
             echo "PostgreSQL $v started"
+            echo "Logs are in [$PG_LOG]"
         fi
         exit
         ;;
@@ -216,8 +225,9 @@ case $1 in
         fi
 
         # Start er up!
-        $PG_CTL start -l $PG_DATA/server.log
+        $PG_CTL start -l $PG_LOG
         echo "PostgreSQL $v started"
+        echo "Logs are in [$PG_LOG]"
         exit
         ;;
 
@@ -235,12 +245,13 @@ case $1 in
     restart)
         # Shut down the server unless it's not running.
         if $PG_CTL status &> /dev/null; then
-            $PG_CTL restart -l $PG_DATA/server.log
+            $PG_CTL restart -l $PG_LOG
             echo "PostgreSQL restarted"
         else
-            $PG_CTL start -l $PG_DATA/server.log
+            $PG_CTL start -l $PG_LOG
             echo "PostgreSQL started"
         fi
+        echo "Server logs are in [$PG_LOG]"
         exit
         ;;
 
