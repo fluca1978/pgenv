@@ -54,6 +54,14 @@ exit_cleanup(){
     fi
 }
 
+# Prints a debug message if PGENV_DEBUG
+# variable enabled
+pgenv_debug(){
+    if [ ! -z "$PGENV_DEBUG" ]; then
+        echo "[DEBUG] $1" >&2
+    fi
+}
+
 pgversions() {
     if [ -e "pgsql" ]; then
         curr=$(readlink pgsql)
@@ -435,7 +443,8 @@ EOF
                               | sed 's/^v//' \
                               | sed 's/\/$//')
         do
-            major=$( echo $version | sed 's/\([[:digit:]]\+\).*/\1/' )
+            major=$( echo $version | sed 's/\([[:digit:]]\{1,2\}\).*/\1/' )
+            pgenv_debug "Extracted major version [$major]"
 
             # check the version is a number!
             if [[ $major =~ ^[0-9]+$ ]] ; then
@@ -448,9 +457,10 @@ EOF
                 if [ $major -ge 10 -o $major -le 6 ]; then
                     minor=0
                 else
-                    minor=$( echo $version | sed 's/[[:digit:]]\.\([[:digit:]]\+\).*/\1/' )
+                    minor=$( echo $version | sed 's/[[:digit:]]\.\([[:digit:]]\{1,2\}\).*/\1/' )
                 fi
                 major=$(( major * 10 + minor ))
+                pgenv_debug "Normalized major version [$major]"
                 # append the current version to the hash
                 # indexed by the major version
                 versions_hash[ "$major" ]+="${version}-"
@@ -459,9 +469,10 @@ EOF
 
         # check to have some version in the hash, or
         # the download did go wrong
-        keys="${versions_hash[@]}"
+        keys=$( echo ${!versions_hash[@]} )
         if [ -z "$keys" ]; then
             echo "No available versions found at URL <$PGENV_DOWNLOAD_ROOT>"
+            pgenv_debug "Hash content: ${!versions_hash[@]}"
             exit 1
         fi
 
