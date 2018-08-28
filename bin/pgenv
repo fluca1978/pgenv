@@ -64,9 +64,10 @@ pgenv_debug(){
 
 pgversions() {
     if [ -e "pgsql" ]; then
-        curr=$(readlink pgsql)
+        local curr=$(readlink pgsql)
     fi
-    installed=0
+    local installed=0
+    local flags=""
     for dir in $( ls -d pgsql-* ); do
         if [ "$dir" = "$curr" ]; then
             flags=" *"
@@ -74,7 +75,8 @@ pgversions() {
             flags="  "
         fi
 
-        echo -e "$flags $dir"
+        local version=$( echo $dir | sed 's/^pgsql-//' )
+        echo -e "$flags\t$version\t\t$dir"
         installed=$(( installed + 1 ))
     done
 
@@ -167,21 +169,54 @@ pgenv_check_dependencies(){
     trap 'exit' ERR
 }
 
+# This function checks for its first argument to be
+# a valid PostgreSQL number, soemthing like 10.5 or 9.5.4.
+# In case no version number is specified, or the
+# version number is not valid (e.g., 10, 0.9) the
+# function aborts the script.
+# If no version at all is specified, the `pgversions` function
+# is invoked to display the user with available versions.
+pgenv_input_version_or_exit() {
+    local version=$1
+
+    if [ -z "$version" ]; then
+        echo "Which version of PostgreSQL do you want?"
+        pgversions
+        exit 1
+    fi
+
+    if [[ $version =~ ^[1-9][0-9]?\.[0-9]+.?[0-9]? ]]; then
+        return
+    else
+        echo "Specified version <$version> does not appear to be a PostgreSQL valid version number"
+        exit 1
+    fi
+}
+
+# This function accepts a version number (that should
+# have been already checked to be valid)
+# and searches for an installation with such
+# a version. If no installation with such version number
+# has been found, the script aborts after
+# showing installed versions
+pgenv_installed_version_or_exit(){
+    local version=$1
+
+    if [ ! -e "pgsql-${version}" ]; then
+        echo "PostgreSQL $version not installed; installed versions:"
+        pgversions
+        exit 1
+    fi
+
+}
+
 case $1 in
     use)
         v=$2
 
-        if [ -z "$v"  ]; then
-            echo "Which version number do you want?"
-            exit 1
-        fi
+        pgenv_input_version_or_exit $v
+        pgenv_installed_version_or_exit $v
 
-        # Make sure it's a version we have.
-        if [ ! -e "pgsql-$v" ]; then
-            echo "PostgreSQL $v not installed; installed versions:"
-            pgversions
-            exit 1
-        fi
 
         # Check if current version?
         if [ "`readlink pgsql`" = "pgsql-$v" ]; then
@@ -275,13 +310,7 @@ case $1 in
     build)
         v=$2
 
-        if [ -z "$v"  ]; then
-            echo "Which version number do you want?"
-            exit 1
-        fi
-
-
-
+        pgenv_input_version_or_exit $v
 
         # check for all dependencies
         pgenv_check_dependencies
@@ -384,16 +413,9 @@ EOF
     remove)
         v=$2
 
-        if [ -z "$v"  ]; then
-            echo "Which version number do you want?"
-            exit 1
-        fi
+        pgenv_input_version_or_exit $v
+        pgenv_installed_version_or_exit $v
 
-        if [ ! -e "pgsql-$v" ]; then
-            echo "PostgreSQL $v not installed; installed versions:"
-            pgversions
-            exit 1
-        fi
 
         if [ "`readlink pgsql`" = "pgsql-$v" ]; then
             echo "PostgreSQL $v currently in use"
