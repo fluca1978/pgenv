@@ -34,7 +34,7 @@ PGENV_ROOT=$(pwd)
 PGSQL=$PGENV_ROOT/pgsql
 PG_DATA=$PGSQL/data
 PG_LOG=$PG_DATA/server.log
-PGENV_DOWNLOAD_ROOT='http://ftp.postgresql.org/pub/source/'
+PGENV_DOWNLOAD_ROOT='https://ftp.postgresql.org/pub/source/'
 
 # temporary  check file
 PGENV_CHECK_FILE=$( mktemp ${PGENV_ROOT}/pgenv.check.XXXXX )
@@ -108,10 +108,9 @@ EOF
 }
 
 
-
-# Accepts the name of a command and the value for the executable of that
-# command. Prints a line in a temporary file (which must already exist) with
-# an OK or KO for the command.
+# Accepts the name of a command and the path to the executable for that command.
+# Prints a line in to temporary file (which must already exist) with an OK or KO
+# for the command.
 pgenv_detail_command(){
     local command_name=$1
     local command=$2
@@ -123,9 +122,9 @@ pgenv_detail_command(){
     fi
 }
 
-# Searches for all dependencies and prints line for each command in a file.
-# Prints a list of missing commands. If none are missing, it prints the
-# locations of all each command if the argument is not null.
+# Searches for all dependencies and prints a line for each command to a file.
+# Prints a list of missing commands. If none are missing and the argument is
+# not null, it prints the paths for all commands.
 pgenv_check_dependencies(){
     local verbose=$1
     # Don't exit on error.
@@ -147,7 +146,7 @@ pgenv_check_dependencies(){
     pgenv_detail_command "sed" $PGENV_SED
 
     PGENV_PERL=$(which perl)
-    pgenv_detail_command "Perl5" $PGENV_PERL
+    pgenv_detail_command "Perl 5" $PGENV_PERL
 
     PGENV_TAR=$(which tar)
     pgenv_detail_command "tar" $PGENV_TAR
@@ -454,8 +453,8 @@ EOF
 
     available)
         shift # remove the command from the argument list
-        echo -e "\tAvailable PostgreSQL versions"
-        echo -e "\t============================="
+        echo -e "         Available PostgreSQL versions"
+        echo -e "==============================================\n"
 
         # there should be a simpler single regexp...
         # First of all download the page with the links to each version (href=va.b.c/)
@@ -534,11 +533,8 @@ EOF
                 fi
             fi
 
-
-
-            echo "=============================================="
-            echo "         PostgreSQL major version $current_version"
-            echo "----------------------------------------------"
+            echo "                PostgreSQL $current_version"
+            echo "------------------*-----------------------------"
             printed=0
             for numeric in $( echo ${versions_hash[$major]} \
                                   | tr '-' '\n'  \
@@ -550,12 +546,13 @@ EOF
                     echo
                 fi
 
-                echo -en " $numeric\t"
+                # the output string will be 'a.b.cd'
+                # therefore no more than 6 chars, left aligned
+                printf " %-6s " $numeric
                 printed=$(( printed +  1 ))
             done
-            echo
-            echo "=============================================="
-            echo
+
+            echo -e "\n\n"
         done
         exit
         ;;
