@@ -76,7 +76,7 @@ pgversions() {
         fi
 
         local version=$( echo $dir | sed 's/^pgsql-//' )
-        echo -e "$flags\t$version\t\t$dir"
+        printf "%2s   %6s    %s\n" "$flags" "$version" "$dir"
         installed=$(( installed + 1 ))
     done
 
@@ -114,12 +114,14 @@ EOF
 pgenv_detail_command(){
     local command_name=$1
     local command=$2
+    local status="OK"
 
     if [ -z "$command" ]; then
-        echo -e "[KO]\t$command_name:\tNOT found!" >> $PGENV_CHECK_FILE
-    else
-        echo -e "[OK]\t$command_name:\t$command" >> $PGENV_CHECK_FILE
+        status="KO"
+        command="not found!"
     fi
+
+    printf "[%2s] %10s : %s\n" "$status" "$command_name" "$command" >> $PGENV_CHECK_FILE
 }
 
 # Searches for all dependencies and prints a line for each command to a file.
