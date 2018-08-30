@@ -1,21 +1,5 @@
 #!env bash
 
-# Released versions:
-# 8.0.26
-# 8.1.23
-# 8.2.23
-# 8.3.23
-# 8.4.22
-# 9.0.19
-# 9.1.24
-# 9.2.24
-# 9.3.23
-# 9.4.18
-# 9.5.13
-# 9.6.9
-# 10.4
-# 11beta2
-
 # https://stackoverflow.com/a/19622569/79202
 trap 'exit' ERR
 set -E
@@ -36,23 +20,11 @@ PG_DATA=$PGSQL/data
 PG_LOG=$PG_DATA/server.log
 PGENV_DOWNLOAD_ROOT='https://ftp.postgresql.org/pub/source/'
 
-# temporary  check file
-PGENV_CHECK_FILE=$( mktemp ${PGENV_ROOT}/pgenv.check.XXXXX )
 
 # Now -w because 9.0 and earlier always time out even when successful.
 PG_CTL="$PGSQL/bin/pg_ctl -D $PG_DATA"
 PGENV_PG_USER="postgres"
 INITDB="$PGSQL/bin/initdb -U $PGENV_PG_USER --locale en_US.UTF-8 --encoding UNICODE -D $PG_DATA"
-
-# Ensure all temporary files
-# are removed on exit
-trap "exit_cleanup" EXIT
-
-exit_cleanup(){
-    if [ -f "$PGENV_CHECK_FILE" ]; then
-        rm -f "$PGENV_CHECK_FILE"
-    fi
-}
 
 # Prints a debug message if PGENV_DEBUG
 # variable enabled
@@ -107,30 +79,46 @@ For full documentation, see: https://github.com/theory/pgenv#readme
 EOF
 }
 
-
-# Accepts the name of a command and the path to the executable for that command.
-# Prints a line in to temporary file (which must already exist) with an OK or KO
-# for the command.
-pgenv_detail_command(){
-    local command_name=$1
-    local command=$2
-    local status="OK"
-
-    if [ -z "$command" ]; then
-        status="KO"
-        command="not found!"
-    fi
-
-    printf "[%2s] %10s : %s\n" "$status" "$command_name" "$command" >> $PGENV_CHECK_FILE
-}
-
-# Searches for all dependencies and prints a line for each command to a file.
-# Prints a list of missing commands. If none are missing and the argument is
-# not null, it prints the paths for all commands.
+# Searches for all dependencies and prints a report. If the argument is null,
+# only missing depencencies will be reported. Otherwise, it prints the paths for
+# all commands.
 pgenv_check_dependencies(){
     local verbose=$1
     # Don't exit on error.
     trap "" ERR
+
+    local present=""
+    local missing=""
+    local warning=""
+
+    pgenv_detail_command(){
+        local command_name=$1
+        local command=$2
+        local language=$3
+
+        local nl=$'\n'
+        local tab=$'\t'
+        if [ -z "$command" ]; then
+            if [ -z "$language" ]; then
+                missing+="[KO] $command_name:${tab}NOT found!$nl"
+            else
+                warning+="[KO] $command_name:${tab}NOT found (cannot build $language)$nl"
+            fi
+        else
+            present+="[OK] $command_name:$tab$command$nl"
+        fi
+    }
+
+    # Appends a language interpreter configuration
+    # to the 'configure' variable used to build the system
+    pgenv_configure_pl(){
+        local language=$1
+        local interpreter=$2
+
+        if [ ! -z "$interpreter" ]; then
+            PGENV_CONFIGURE_PL+="--with-${language}  $( echo $language | tr 'a-z' 'A-Z' )=${interpreter} "
+        fi
+    }
 
     PGENV_MAKE=$(which make)
     if [ -z "$PGENV_MAKE" ]; then
@@ -144,30 +132,33 @@ pgenv_check_dependencies(){
     PGENV_PATCH=$(which patch)
     pgenv_detail_command "patch" $PGENV_PATCH
 
+    PGENV_TAR=$(which tar)
+    pgenv_detail_command "tar" $PGENV_TAR
+
     PGENV_SED=$(which sed)
     pgenv_detail_command "sed" $PGENV_SED
 
     PGENV_PERL=$(which perl)
-    pgenv_detail_command "Perl 5" $PGENV_PERL
+    pgenv_detail_command "perl" "$PGENV_PERL" "PL/Perl"
+    pgenv_configure_pl "perl" $PGENV_PERL
 
-    PGENV_TAR=$(which tar)
-    pgenv_detail_command "tar" $PGENV_TAR
+    PGENV_PYTHON=$(which python)
+    pgenv_detail_command "python" "$PGENV_PYTHON" "PL/Python"
+    pgenv_configure_pl "python" $PGENV_PYTHON
+
 
     # Go back to exiting on error.
-    missing=$( grep -c 'KO' $PGENV_CHECK_FILE )
-
-    if [ $missing -gt 0 ]; then
-        echo "Missing $missing dependencies:"
-        grep 'KO' $PGENV_CHECK_FILE
+    trap 'exit' ERR
+    if [ ! -z "$verbose" ]; then
+        echo -n "$present"
+    fi
+    if [ ! -z "$verbose" ]; then
+        echo -n "$warning"
+    fi
+    if [ ! -z "$missing" ]; then
+        echo "$missing"
         exit 1
     fi
-
-    if [ ! -z "$verbose" ]; then
-        cat $PGENV_CHECK_FILE
-    fi
-
-    # re-enable error handling
-    trap 'exit' ERR
 }
 
 # This function checks for its first argument to be
@@ -186,7 +177,7 @@ pgenv_input_version_or_exit() {
         exit 1
     fi
 
-    if [[ $version =~ ^[1-9][0-9]?\.[0-9]+.?[0-9]?$ ]]; then
+    if [[ $version =~ ^[1-9][0-9]?\.[0-9]+(\.[0-9]+)?$ ]]; then
         return
     elif [[ $version =~ ^[1-9][1-9]beta[1-9]?$ ]]; then
         return
@@ -249,7 +240,6 @@ pgenv_current_postgresql_or_exit(){
         # echo the value, needs to be captured
         echo $v
     fi
-
 }
 
 case $1 in
@@ -407,8 +397,9 @@ case $1 in
 EOF
         fi
 
-        # Configure.
-        ./configure --prefix=$PGENV_ROOT/pgsql-$v --with-perl PERL=$PGENV_PERL
+        # Configure: use the variable PGENV_CONFIGURE_PL for PL/Perl and PL/Python languages
+        # that has been auto-computed by pgenv_check_dependencies
+        ./configure --prefix=$PGENV_ROOT/pgsql-$v $PGENV_CONFIGURE_PL
 
         # make and make install
         if [[ $v =~ ^[1-8]\. ]]; then
@@ -481,8 +472,8 @@ EOF
 
     available)
         shift # remove the command from the argument list
-        echo -e "         Available PostgreSQL versions"
-        echo -e "==============================================\n"
+        echo -e "             Available PostgreSQL Versions"
+        echo -e "========================================================\n"
 
         # there should be a simpler single regexp...
         # First of all download the page with the links to each version (href=va.b.c/)
@@ -522,7 +513,7 @@ EOF
         # the download did go wrong
         keys=$( echo ${!versions_hash[@]} )
         if [ -z "$keys" ]; then
-            echo "No available versions found at URL <$PGENV_DOWNLOAD_ROOT>"
+            echo "No versions found at URL <$PGENV_DOWNLOAD_ROOT>"
             pgenv_debug "Hash content: ${!versions_hash[@]}"
             exit 1
         fi
@@ -531,7 +522,6 @@ EOF
         # displying each version with a separated header
         for major in $( echo ${!versions_hash[@]} | sort -n )
         do
-
             # normalize version numbers
             # (note, use sed instead of bc to avoid introducing another dependency)
             if [ $major -ge 70 -a $major -le 96 ]; then
@@ -561,8 +551,9 @@ EOF
                 fi
             fi
 
-            echo "                PostgreSQL $current_version"
-            echo "------------------*-----------------------------"
+            echo "                     PostgreSQL $current_version"
+            echo "    ------------------------------------------------"
+            echo -n "    "
             printed=0
             for numeric in $( echo ${versions_hash[$major]} \
                                   | tr '-' '\n'  \
@@ -572,6 +563,7 @@ EOF
                 if [ $printed -gt 5 ]; then
                     printed=0
                     echo
+                    echo -n "    "
                 fi
 
                 # the output string will be 'a.b.cd'
@@ -579,8 +571,7 @@ EOF
                 printf " %-6s " $numeric
                 printed=$(( printed +  1 ))
             done
-
-            echo -e "\n\n"
+            echo -e "\n"
         done
         exit
         ;;

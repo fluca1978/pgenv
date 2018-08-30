@@ -99,7 +99,8 @@ $ git pull
 *   sed, grep, cat, tar - General Unix command line utilities
 *   patch - For patching versions that need patching
 *   make -  Builds PostgreSQL
-*   Perl 5 - To build PL/Perl
+*   Perl 5 - To build PL/Perl (not mandatory)
+*   Python - To build PL/Python (not mandatory)
 
 Command Reference
 -----------------
@@ -166,6 +167,11 @@ before building. If the version is already built, it will not be rebuilt; use
     $ pgenv build 10.3
     # Curl, configure, and make output elided
     PostgreSQL 10.3 built
+
+The build will install PL/Perl and/or PL/Python depending on the current environment:
+if Perl and/or Python interpreters are available, the `configure` part of the build
+process will reflect their presence and will build interpreters into the
+PostgreSQL instance.
 
 ### pgenv remove
 
@@ -259,21 +265,21 @@ produces copious output.
 
     $ pgenv available
     ...
-            Available PostgreSQL versions
-    ==============================================
+                Available PostgreSQL Versions
+    ========================================================
 
-                    PostgreSQL 9.6
-    -----------------------------------------------
-    9.6.0	 9.6.1	 9.6.2	 9.6.3	 9.6.4	 9.6.5
-    9.6.6	 9.6.7	 9.6.8	 9.6.9	 9.6.10
+                        PostgreSQL 9.6
+        ------------------------------------------------
+        9.6.0   9.6.1   9.6.2   9.6.3   9.6.4   9.6.5
+        9.6.6   9.6.7   9.6.8   9.6.9   9.6.10
 
-                    PostgreSQL 10
-    -----------------------------------------------
-    10.0	 10.1	 10.2	 10.3	 10.4	 10.5
+                        PostgreSQL 10
+        ------------------------------------------------
+        10.0    10.1    10.2    10.3    10.4    10.5
 
-                    PostgreSQL 11
-    -----------------------------------------------
-    11beta1	 11beta2	 11beta3
+                        PostgreSQL 11
+        ------------------------------------------------
+        11beta1  11beta2  11beta3
 
 The versions are organized by major release version. Any listed version may be
 passed to `pgenv` commands that require a version.
@@ -282,23 +288,23 @@ To limit the list to specific major releases, pass those releases to
 `available`. For example, to list only the `9.6` and `10` available versions:
 
     $ pgenv available 9.6 10
-            Available PostgreSQL versions
-    ==============================================
+                Available PostgreSQL Versions
+    ========================================================
 
-                    PostgreSQL 9.6
-    -----------------------------------------------
-    9.6.0	 9.6.1	 9.6.2	 9.6.3	 9.6.4	 9.6.5
-    9.6.6	 9.6.7	 9.6.8	 9.6.9	 9.6.10
+                        PostgreSQL 9.6
+        ------------------------------------------------
+        9.6.0   9.6.1   9.6.2   9.6.3   9.6.4   9.6.5
+        9.6.6   9.6.7   9.6.8   9.6.9   9.6.10
 
-                    PostgreSQL 10
-    -----------------------------------------------
-    10.0	 10.1	 10.2	 10.3	 10.4	 10.5
+                        PostgreSQL 10
+        ------------------------------------------------
+        10.0    10.1    10.2    10.3    10.4    10.5
 
 ### pgenv check
 
-Checks the list of commands required to download and build PostgreSQL. Prints
-a result for each, with either the location where the command was found, or an
-error if any command was not found.
+Checks the list of commands required to download and build PostgreSQL. Prints a
+result for each, with either the path to the command or an error reporting that
+the command was not found.
 
 ### pgenv help
 
