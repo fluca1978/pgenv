@@ -335,20 +335,32 @@ case $1 in
         command="$1"
 
         # if the user specified a stop mode
-        # use it, or default to 'smart'
-        stop_mode="$2"
+        # use it, otherwise the PGENV_STOP_MODE
+        # variable will be used.
+        if [ ! -z "$2" ]; then
+            stop_mode="$2"
+        else
+            stop_mode=$PGENV_STOP_MODE
+        fi
+
         case $stop_mode in
             f|fast)
-                stop_mode='fast'
+                PGENV_STOP_MODE="--mode=fast"
                 ;;
             i|immediate)
-                stop_mode='immediate'
+                PGENV_STOP_MODE="--mode=immediate"
+                ;;
+            s|smart)
+                PGENV_STOP_MODE="--mode=smart"
                 ;;
             *)
-                stop_mode='smart'
+                # do not allow the user to screw up pg_ctl flags!
+                PGENV_STOP_MODE=""
                 ;;
         esac
-        pgenv_debug "Stop mode set to <$stop_mode>"
+
+        pgenv_debug "Stop mode set to [$PGENV_STOP_MODE]"
+
 
 
 
@@ -357,11 +369,11 @@ case $1 in
             # ok, server running, apply the command
             case $command in
                 stop)
-                    $PG_CTL stop --mode=${stop_mode}
+                    $PG_CTL stop $PGENV_STOP_MODE
                     echo "PostgreSQL $v stopped"
                     ;;
                 restart)
-                    $PG_CTL restart --mode=${stop_mode} -l $PG_LOG
+                    $PG_CTL restart -l "$PG_LOG" $PGENV_STOP_MODE
                     echo "PostgreSQL $v restarted"
                     echo "Logging to $PG_LOG"
                     ;;

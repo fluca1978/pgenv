@@ -230,6 +230,21 @@ It is possible to specify a stop mode as one of the `pg_ctl` recognized modes:
     PostgreSQL 10.5 stopped
 
 See `pg_ctl(1)` documentation for more information about stop modes.
+It is also possible to define the special `PGENV_STOP_MODE` variable
+to a valid stop mode flag for `pg_ctl(1)` in order to configure
+the mode:
+
+    $ PGENV_STOP_MODE="immediate" pgenv stop
+    
+which is equivalent to
+
+    $ pgenv stop immediate
+    
+It is worth noting that the command line argument stop mode takes precedence
+against the `PGENV_STOP_MODE` variable, that means the following
+will stop the server in `immediate` mode:
+
+    $ PGENV_STOP_MODE="fast" pgenv stop immediate
 
 ### pgenv restart
 
@@ -240,15 +255,11 @@ already running.
     PostgreSQL 10.1 restarted
     Logging to pgsql/data/server.log
 
-It is possible to provide the stop mode similarly to the `stop` command:
+It is possible to provide the stop mode similarly to the `stop`, by either
+passing it as command line argument or via `PGENV_STOP_MODE` variable:
 
     $ pgenv restart immediate
-    waiting for server to shut down.... done
-    server stopped
-    waiting for server to start.... done
-    server started
-    PostgreSQL 10.1 restarted
-    Logging to pgsql/data/server.log
+    $ PGENV_STOP_MODE="immediate" pgenv restart
 
 ### pgenv available
 
