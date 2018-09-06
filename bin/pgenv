@@ -325,11 +325,14 @@ case $1 in
         exit
         ;;
 
-    stop)
+    stop|restart)
         # check a version is currently in use
         pgenv_current_postgresql_or_exit
         v=$( pgenv_current_version_number )
         pgenv_debug "Current version $v"
+
+        # either stop or restart
+        command="$1"
 
         # if the user specified a stop mode
         # use it, or default to 'smart'
@@ -347,31 +350,35 @@ case $1 in
         esac
         pgenv_debug "Stop mode set to <$stop_mode>"
 
-        # Shut down the server unless it's not running.
-        if $PG_CTL status &> /dev/null; then
-            $PG_CTL --mode=${stop_mode} stop
-            echo "PostgreSQL $v stopped"
-        else
-            echo "PostgreSQL $v not running"
-        fi
-        exit
-        ;;
 
-    restart)
-        # check a version is currently in use
-        pgenv_current_postgresql_or_exit
-        v=$( pgenv_current_version_number )
-        pgenv_debug "Current version $v"
 
-        # Shut down the server unless it's not running.
+        # Test if the server is running
         if $PG_CTL status &> /dev/null; then
-            $PG_CTL restart -l $PG_LOG
-            echo "PostgreSQL $v restarted"
+            # ok, server running, apply the command
+            case $command in
+                stop)
+                    $PG_CTL stop --mode=${stop_mode}
+                    echo "PostgreSQL $v stopped"
+                    ;;
+                restart)
+                    $PG_CTL restart --mode=${stop_mode} -l $PG_LOG
+                    echo "PostgreSQL $v restarted"
+                    echo "Logging to $PG_LOG"
+                    ;;
+            esac
         else
-            $PG_CTL start -l $PG_LOG
-            echo "PostgreSQL $v started"
+            # server not running
+            case $command in
+                stop)
+                    echo "PostgreSQL $v not running"
+                    ;;
+                restart)
+                    $PG_CTL start -l $PG_LOG
+                    echo "PostgreSQL $v started"
+                    echo "Logging to $PG_LOG"
+                    ;;
+            esac
         fi
-        echo "Logging to $PG_LOG"
         exit
         ;;
 

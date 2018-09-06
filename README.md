@@ -237,7 +237,18 @@ Restarts the currently active version of PostgreSQL, or starts it if it's not
 already running.
 
     $ pgenv restart
-    PostgreSQL restarted
+    PostgreSQL 10.1 restarted
+    Logging to pgsql/data/server.log
+
+It is possible to provide the stop mode similarly to the `stop` command:
+
+    $ pgenv restart immediate
+    waiting for server to shut down.... done
+    server stopped
+    waiting for server to start.... done
+    server started
+    PostgreSQL 10.1 restarted
+    Logging to pgsql/data/server.log
 
 ### pgenv available
 
