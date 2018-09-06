@@ -219,7 +219,17 @@ Initializes the data directory if none exists.
 Stops the currently active version of PostgreSQL.
 
     $ pgenv stop
-    PostgreSQL stopped
+    PostgreSQL 10.5 stopped
+    
+It is possible to specify a stop mode as one of the `pg_ctl` recognized modes:
+- `smart` (the default)
+- `fast`
+- `immediate`
+
+    $ pgenv stop immediate
+    PostgreSQL 10.5 stopped
+
+See `pg_ctl(1)` documentation for more information about stop modes.
 
 ### pgenv restart
 

@@ -331,9 +331,25 @@ case $1 in
         v=$( pgenv_current_version_number )
         pgenv_debug "Current version $v"
 
+        # if the user specified a stop mode
+        # use it, or default to 'smart'
+        stop_mode="$2"
+        case $stop_mode in
+            f|fast)
+                stop_mode='fast'
+                ;;
+            i|immediate)
+                stop_mode='immediate'
+                ;;
+            *)
+                stop_mode='smart'
+                ;;
+        esac
+        pgenv_debug "Stop mode set to <$stop_mode>"
+
         # Shut down the server unless it's not running.
         if $PG_CTL status &> /dev/null; then
-            $PG_CTL stop
+            $PG_CTL --mode=${stop_mode} stop
             echo "PostgreSQL $v stopped"
         else
             echo "PostgreSQL $v not running"
