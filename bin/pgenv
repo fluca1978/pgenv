@@ -383,6 +383,8 @@ pgenv_input_version_or_exit() {
 
     if [[ $version =~ ^[1-9][0-9]?\.[0-9]+(\.[0-9]+)?$ ]]; then
         return # versions 9.5.4 or 10.1 and alike
+    elif [ "$version" = "HEAD" ]; then
+	return # git build
     elif [[ $version =~ ^[1-9][1-9](beta|rc)[1-9]?$ ]]; then
         return # versions 11beta1 and alike
     else
@@ -1161,8 +1163,30 @@ case $1 in
                 done
 
                 pgenv_debug "Selected version to build for '$2 $3' is $v"
+		;;
+	    git|dev)
 
+		if [ -z "$PGENV_LOCAL_POSTGRESQL_REPO" ] || [ ! -d $PGENV_LOCAL_POSTGRESQL_REPO ]; then
+		    echo "Cannot build development version without a local git repository"
+		    echo "Please set the PGENV_LOCAL_POSTGRESQL_REPO variable"
+		    exit
+		fi
+
+
+		v=HEAD # assume we want the latest and the greatest
+
+		if [ ! -z "$3" ]; then
+		    git_tag=$3
+		else
+		    git_tag=HEAD
+		fi
+
+		
+		pgenv_debug "Selected git build: $git_tag from $PGENV_LOCAL_POSTGRESQL_REPO"
+
+		;;
         esac
+
 
         # sanity checks before building
         pgenv_input_version_or_exit "$v"
@@ -1240,18 +1264,26 @@ EOF
 
             (cd $PGENV_LOCAL_POSTGRESQL_REPO &&
                  git fetch)
-            if [[ $v =~ ^[1-9]\. ]]; then
-                # version 1-9
-                tag=REL${v}
-            else
-                tag=REL_${v}
-            fi
-            tag=${tag^^}        # uppercase for rc, beta, etc
-            tag=${tag//./_}     # change dots to underscores
+	    if [ -z "$git_tag" ]; then
+		if [[ $v =~ ^[1-9]\. ]]; then
+                    # version 1-9
+                    git_tag=REL${v}
+		elif [  "$v" = "HEAD"  ]; then
+		    git_tag=HEAD
+		else
+                    git_tag=REL_${v}
+		fi
 
+		git_tag=${git_tag^^}        # uppercase for rc, beta, etc
+		git_tag=${git_tag//./_}     # change dots to underscores
+
+	    fi
+
+
+	    pgenv_debug "Selected tag for git repository: $git_tag"
             mkdir postgresql-$v
             (cd $PGENV_LOCAL_POSTGRESQL_REPO &&
-                 git archive --format=tar $tag) | tar xp -C postgresql-$v
+                 git archive --format=tar $git_tag) | tar xp -C postgresql-$v
         else
             # Unpack the source.
             $PGENV_TAR $TAR_OPTS $PG_TARBALL

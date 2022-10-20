@@ -363,6 +363,34 @@ interpreter, pass it on the command line at the time of build:
 PERL=/usr/local/my-fancy-perl pgenv build 10.5
 ```
 
+#### Building from git
+
+It is possibile to instrument `pgenv` to build a specific version of the source
+tree checked out from a local git repository.
+
+In order to instrument a build out of a git tree you need to:
+1) have a local clone of the PostgreSQL git repository;
+2) configure the environment variabile `PGENV_LOCAL_POSTGRESQL_REPO` to point to such repository;
+3) issue a `build git` command. The `build git` command can be augment with the specific checkout
+to build, that is anything a `git checkout` command can understand (i.e., a commit hash, a tag, and so on).
+
+For instance, assuming you have the local PostgreSQL git repository under `/code/git/postgres`
+and you want to build the `HEAD` (i.e., the latest commit):
+
+```
+export PGENV_LOCAL_POSTGRESQL_REPO=/code/git/postgres
+pgenv build git
+```
+
+or if you want to build a specific checkout:
+
+```
+export PGENV_LOCAL_POSTGRESQL_REPO=/code/git/postgres
+git build git  7fd1ae987a5dc6d0b
+```
+
+In any case, the `build git` command will issue a `git fetch` within the local repository, to keep it in sync.
+
 #### Patching
 
 `pgenv` can patch the source tree before the build process starts. In
