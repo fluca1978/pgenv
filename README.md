@@ -371,8 +371,8 @@ tree checked out from a local git repository.
 In order to instrument a build out of a git tree you need to:
 1) have a local clone of the PostgreSQL git repository;
 2) configure the environment variabile `PGENV_LOCAL_POSTGRESQL_REPO` to point to such repository;
-3) issue a `build git` command. The `build git` command can be augment with the specific checkout
-to build, that is anything a `git checkout` command can understand (i.e., a commit hash, a tag, and so on).
+3) issue a `build git` command. The `build git` command can be augmented to build a specific checkout
+based on anything a `git checkout` command can understand (i.e., a commit hash, a tag, and so on).
 
 For instance, assuming you have the local PostgreSQL git repository under `/code/git/postgres`
 and you want to build the `HEAD` (i.e., the latest commit):
