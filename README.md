@@ -635,7 +635,7 @@ The `config` command accepts the following subcommands:
            (Using `$EDITOR`, e.g: `export EDITOR=/usr/bin/emacs`)
 -    `delete` removes the specified configuration
 -    `migrate` is a command used to change the configuration format between versions of `pgenv`
--    `path` accepts a version number and prints on standard output the path to such version
+-    `path` accepts a version number (or "default") and prints on standard output the path to such version
             configuration path
  
 
@@ -791,10 +791,10 @@ export PGENV_CONFIGURATION_FILE=$( pgenv config path 15.4 )
 The above will set the environment variable `PGENV_CONFIGURATION_FILE` to the configuration
 file for the PostgreSQL version `15.4`.
 If you want to use the default configuration file, substitute the version number with the
-special `default` keyowrd, for example:
+special `default` keyword, for example:
 
 ```
-export PGENV_CONFIGURATION_FILE=pgenv config path default
+export PGENV_CONFIGURATION_FILE=$( pgenv config path default )
 ```
  
 ### pgenv log

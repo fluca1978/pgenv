@@ -454,7 +454,7 @@ pgenv_configuration_file_name(){
     # if the user has defined an environment variable PGENV_CONFIGURATION_FILE
     # I need to use that instead of trying to understand which file to use
     if [ ! -z "$PGENV_CONFIGURATION_FILE" -a -z "$skip_env" ]; then
-	pgenv_debug "Configuration file overwritten by environment variable PGENV_CONFIGURATION_FILE = $PGENV_CONFIGURATION_FILE"
+	pgenv_debug "Configuration file set by environment variable PGENV_CONFIGURATION_FILE = $PGENV_CONFIGURATION_FILE"
 	echo "${PGENV_CONFIGURATION_FILE}"
 	return
     fi
@@ -613,7 +613,7 @@ EOF
 # the path to which the program will look for a
 # configuration file.
 #
-# This can be useful to exdport the environment variable
+# This can be useful to export the environment variable
 # to point to a custom path, like this:
 #
 #    % export PGENV_CONFIGURATION_FILE=$( pgenv config path 16neta2 )
@@ -691,7 +691,7 @@ pgenv_configuration_write() {
 
     # avoid overwriting configuration if the environment variable is set
     if [ ! -z "${PGENV_CONFIGURATION_FILE}" ]; then
-	pgenv_debug "Cannot write configuration file while PGENV-CONFIGURATION_FILE set!"
+	pgenv_debug "Will not write configuration file while PGENV_CONFIGURATION_FILE set!"
 	exit 1
     fi
 
@@ -1597,7 +1597,7 @@ You need to specify one of the following \`config\` actions to perform:
     write
     edit
     delete
-    use
+    path
 
 For instance:
 
